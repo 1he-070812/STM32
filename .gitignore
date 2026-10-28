@@ -1,0 +1,23 @@
+# Keil 构建输出
+Objects/
+Listings/
+DebugConfig/
+*.uvguix.*
+*.bak
+*.dep
+*.crf
+*.o
+*.d
+*.axf
+*.hex
+*.map
+*.lst
+*.lnp
+*.sct
+
+# STM32 标准外设库 / CMSIS 启动文件（非自写代码）
+LED照明系统/Library/
+LED照明系统/Start/
+LED照明系统/User/stm32f10x_conf.h
+LED照明系统/User/stm32f10x_it.c
+LED照明系统/User/stm32f10x_it.h
