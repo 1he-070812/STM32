@@ -1,0 +1,179 @@
+
+
+#include "tm1637.h"
+extern TIM_HandleTypeDef htim4;
+ 
+const unsigned char SEGMENT_CODE[]=  {0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7d,0x07,0x7f,0x6f,0x77,0x7C,0x39,0x5E,0x79,0x71};
+ 
+ 
+unsigned int delay_time=1;//us延时设为 1 数码管不会抖动
+ 
+ void delay_us(uint16_t us)
+{     //微秒延时
+	uint16_t differ = 0xffff-us-5;				
+	__HAL_TIM_SET_COUNTER(&htim4,differ);	//设定TIM1计数器起始值
+	HAL_TIM_Base_Start(&htim4);		//启动定时器	
+	
+	while(differ < 0xffff-5){	//判断
+		differ = __HAL_TIM_GET_COUNTER(&htim4);		//查询计数器的计数值
+	}
+	HAL_TIM_Base_Stop(&htim4);
+}
+ 
+ 
+ 
+void TM1637_START()                   //开始条件
+{
+  
+        TM1637_CLK_H();
+        delay_us(delay_time);
+    
+        TM1637_SDA_H();
+        delay_us(delay_time);
+    
+        TM1637_SDA_L();
+        delay_us(delay_time);
+    
+        TM1637_CLK_L();
+        delay_us(delay_time);
+            
+}
+ 
+ 
+void TM1637_STOP()                     //结束条件
+{
+        
+        TM1637_CLK_L();
+        delay_us(delay_time);
+    
+        TM1637_SDA_L();
+        delay_us(delay_time);
+    
+        TM1637_CLK_H();
+        delay_us(delay_time);
+    
+        TM1637_SDA_H();
+        delay_us(delay_time);
+    
+}
+ 
+ 
+void TM1637_WRITE_BYTE_DATA(unsigned char mydata)          //送数据    低位先传
+{
+ 
+ 
+        unsigned char  i;
+ 
+        for(i=0;i<8;i++)
+        {
+            TM1637_CLK_L();
+            delay_us(delay_time);        
+            
+            if(mydata&0x01)
+            {
+               TM1637_SDA_H();
+            }
+            else
+            {
+               TM1637_SDA_L();
+            }
+            
+            delay_us(delay_time);
+        
+            TM1637_CLK_H();
+            delay_us(delay_time);
+        
+            mydata>>=1;
+            delay_us(delay_time);
+        
+        }
+ 
+        TM1637_CLK_L();
+        delay_us(delay_time);
+ 
+ 
+ 
+}
+ 
+ 
+ 
+ 
+void TM1637_CHECK_ack()
+{
+    
+        // 检查应答位，
+        
+     
+        TM1637_CLK_L();
+    
+        delay_us(delay_time);
+ 
+        //DIN 在第9个脉冲被拉低，要检查的
+        while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1)==1)    
+        {
+            
+        }
+     
+     
+        TM1637_CLK_H();
+        delay_us(delay_time);
+     
+        TM1637_CLK_L();
+        delay_us(delay_time);
+ 
+ 
+}
+ 
+ 
+ 
+/*
+     
+     采用固定地址模式=============
+ 
+     TM1637---支持6位8段数码管========================================
+     
+     如果有4个数码管，此程序被反复执行4次
+     addr===     0~5,TM1637支持6个数码管
+     my_data==== 第0个数码管的数据
+ 
+ 
+*/
+void TM1637_WRITE_DISPLAY_BYTE_FIX_ADDRESS(unsigned char addr, unsigned char my_data)
+{
+    
+        unsigned char get_segment=0;
+    
+        
+        //时序  (1) start
+        TM1637_START(); 
+ 
+        //（2）发送commmd1==0X44就是固定地址
+        TM1637_WRITE_BYTE_DATA(0x40+addr);
+        TM1637_CHECK_ack();
+        //注意这个有STOP
+        TM1637_STOP();
+     
+     
+        TM1637_START();
+        //(3)发送起始地址， 
+        TM1637_WRITE_BYTE_DATA(0xC0+addr);
+        //要等DIN在第9个脉冲被拉低
+        TM1637_CHECK_ack();
+ 
+     
+         get_segment =  SEGMENT_CODE[my_data] ;
+        //(4) 发送该地址的数据
+        TM1637_WRITE_BYTE_DATA(get_segment|0x80);//|0x80 此处发送0x80是打开时间中间的2个点
+        //要等DIN在第9个脉冲被拉低
+        TM1637_CHECK_ack(); 
+     
+        TM1637_STOP();    
+ 
+        //==============
+        TM1637_START(); 
+        TM1637_WRITE_BYTE_DATA(0X8C);              //开显示
+        TM1637_STOP();
+ 
+ 
+}
+ 
